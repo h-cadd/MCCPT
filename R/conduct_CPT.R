@@ -343,7 +343,9 @@ run_cpts <- function(site_data,
 #'
 generate_PrC <- function(site_data,
                          age_upper = age_upperbound,
-                         age_lower = age_lowerbound){
+                         age_lower = age_lowerbound,
+                        output_folder = paste0(getwd(),"/CPT_outputs/"),
+                          save = TRUE){
   ## var passover
   age_upperbound = age_upper
   age_lowerbound = age_lower
@@ -436,6 +438,38 @@ generate_PrC <- function(site_data,
     # time_i <- bestage_i
     # ageits_i <- ages_i
   }
+  
+  # --- ADDED: save PrC_res if requested (no other changes to logic) ----------------
+  if (isTRUE(save)) {
+    # Ensure output folder exists
+    if (!dir.exists(output_folder)) {
+      dir.create(output_folder, recursive = TRUE, showWarnings = FALSE)
+    }
+    # Build a simple, robust filename
+    # Try to pull a site-like name from metadata; fall back to "site"
+    site_stub <- tryCatch({
+      md <- site_data$metadata
+      if (!is.null(md) && is.data.frame(md) && nrow(md) > 0) {
+        # Look for likely name fields; adjust if you have a known key
+        idx <- which(tolower(md$category) %in% c("site", "site name", "name", "id"))
+        if (length(idx) > 0) as.character(md[idx[1], 2]) else "site"
+      } else {
+        "site"
+      }
+    }, error = function(e) "site")
+    site_stub <- gsub("[^[:alnum:]_\\-]+", "_", site_stub)
+
+    # Include bounds in filename; use the already computed _i variables
+    rds_path <- file.path(
+      output_folder,
+      paste0(site_stub, "_PrC_", age_lowerbound_i, "-", age_upperbound_i, "BP.rds")
+    )
+
+    saveRDS(PrC_res, rds_path)
+    message("Saved PrC_res to: ", rds_path)
+  }
+  # --- END ADDED ------------------------------------------------------------------
+
   # Return results
   return(PrC_res)
 }
